@@ -1,21 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, writeBatch } from 'firebase/firestore';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import CategoryCard from './CategoryCard';
 import EmptyState from './EmptyState';
 
 function MainContent() {
   const [activeTab, setActiveTab] = useState('edit'); // 'edit' or 'view'
-  const [hobbies, setHobbies] = useState([]);
+  const [interests, setInterests] = useState([]);
   const [wishlist, setWishlist] = useState([]);
 
   useEffect(() => {
     const fetchCategories = async () => {
       // Fetch Hobbies
-      const hobbiesSnapshot = await getDocs(collection(db, "hobbies"));
-      const hobbiesList = hobbiesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setHobbies(hobbiesList);
+      const interestsSnapshot = await getDocs(collection(db, "interests"));
+      const interestsList = interestsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setInterests(interestsList);
 
       // Fetch Wishlist
       const wishlistSnapshot = await getDocs(collection(db, "wishlist"));
@@ -26,12 +25,12 @@ function MainContent() {
   }, []);
 
   const handleAddCategory = async (type) => {
-    const newCategory = { name: `New Category ${type === 'hobbies' ? hobbies.length + 1 : wishlist.length + 1}`, items: [], order: type === 'hobbies' ? hobbies.length : wishlist.length };
+    const newCategory = { name: `New Category ${type === 'interests' ? interests.length + 1 : wishlist.length + 1}`, items: [], order: type === 'interests' ? interests.length : wishlist.length };
     try {
       const collectionRef = collection(db, type);
       const docRef = await addDoc(collectionRef, newCategory);
-      if (type === 'hobbies') {
-        setHobbies([...hobbies, { id: docRef.id, ...newCategory }]);
+      if (type === 'interests') {
+        setInterests([...interests, { id: docRef.id, ...newCategory }]);
       } else {
         setWishlist([...wishlist, { id: docRef.id, ...newCategory }]);
       }
@@ -44,8 +43,8 @@ function MainContent() {
     try {
       const categoryRef = doc(db, type, id);
       await updateDoc(categoryRef, updatedFields);
-      if (type === 'hobbies') {
-        setHobbies(hobbies.map(cat => (cat.id === id ? { ...cat, ...updatedFields } : cat)));
+      if (type === 'interests') {
+        setInterests(interests.map(cat => (cat.id === id ? { ...cat, ...updatedFields } : cat)));
       } else {
         setWishlist(wishlist.map(cat => (cat.id === id ? { ...cat, ...updatedFields } : cat)));
       }
@@ -58,8 +57,8 @@ function MainContent() {
     if (window.confirm("Are you sure you want to delete this category?")) {
       try {
         await deleteDoc(doc(db, type, id));
-        if (type === 'hobbies') {
-          setHobbies(hobbies.filter(cat => cat.id !== id));
+        if (type === 'interests') {
+          setInterests(interests.filter(cat => cat.id !== id));
         } else {
           setWishlist(wishlist.filter(cat => cat.id !== id));
         }
@@ -72,12 +71,12 @@ function MainContent() {
   const handleAddItemToCategory = async (categoryId, item, type) => {
     try {
       const categoryRef = doc(db, type, categoryId);
-      const currentCategory = (type === 'hobbies' ? hobbies : wishlist).find(cat => cat.id === categoryId);
+      const currentCategory = (type === 'interests' ? interests : wishlist).find(cat => cat.id === categoryId);
       const updatedItems = [...(currentCategory.items || []), item];
       await updateDoc(categoryRef, { items: updatedItems });
 
-      if (type === 'hobbies') {
-        setHobbies(hobbies.map(cat => (cat.id === categoryId ? { ...cat, items: updatedItems } : cat)));
+      if (type === 'interests') {
+        setInterests(interests.map(cat => (cat.id === categoryId ? { ...cat, items: updatedItems } : cat)));
       } else {
         setWishlist(wishlist.map(cat => (cat.id === categoryId ? { ...cat, items: updatedItems } : cat)));
       }
@@ -89,14 +88,14 @@ function MainContent() {
   const handleUpdateItem = async (categoryId, itemId, newItemName, type) => {
     try {
       const categoryRef = doc(db, type, categoryId);
-      const currentCategory = (type === 'hobbies' ? hobbies : wishlist).find(cat => cat.id === categoryId);
+      const currentCategory = (type === 'interests' ? interests : wishlist).find(cat => cat.id === categoryId);
       const updatedItems = (currentCategory.items || []).map(item => 
         item.id === itemId ? { ...item, name: newItemName } : item
       );
       await updateDoc(categoryRef, { items: updatedItems });
 
-      if (type === 'hobbies') {
-        setHobbies(hobbies.map(cat => (cat.id === categoryId ? { ...cat, items: updatedItems } : cat)));
+      if (type === 'interests') {
+        setInterests(interests.map(cat => (cat.id === categoryId ? { ...cat, items: updatedItems } : cat)));
       } else {
         setWishlist(wishlist.map(cat => (cat.id === categoryId ? { ...cat, items: updatedItems } : cat)));
       }
@@ -109,12 +108,12 @@ function MainContent() {
     if (window.confirm("Are you sure you want to delete this item?")) {
       try {
         const categoryRef = doc(db, type, categoryId);
-        const currentCategory = (type === 'hobbies' ? hobbies : wishlist).find(cat => cat.id === categoryId);
+        const currentCategory = (type === 'interests' ? interests : wishlist).find(cat => cat.id === categoryId);
         const updatedItems = (currentCategory.items || []).filter(item => item.id !== itemId);
         await updateDoc(categoryRef, { items: updatedItems });
 
-        if (type === 'hobbies') {
-          setHobbies(hobbies.map(cat => (cat.id === categoryId ? { ...cat, items: updatedItems } : cat)));
+        if (type === 'interests') {
+          setInterests(interests.map(cat => (cat.id === categoryId ? { ...cat, items: updatedItems } : cat)));
         } else {
           setWishlist(wishlist.map(cat => (cat.id === categoryId ? { ...cat, items: updatedItems } : cat)));
         }
@@ -124,175 +123,111 @@ function MainContent() {
     }
   };
 
-  const onDragEnd = async (result) => {
-    const { source, destination, draggableId } = result;
+  const handleMoveItem = async (categoryId, itemIndex, direction, type) => {
+    const currentCategories = type === 'interests' ? Array.from(interests) : Array.from(wishlist);
+    const categoryToUpdate = currentCategories.find(cat => cat.id === categoryId);
 
-    // Dropped outside the list
-    if (!destination) {
-      return;
-    }
+    if (categoryToUpdate) {
+      const updatedItems = Array.from(categoryToUpdate.items || []);
+      const [movedItem] = updatedItems.splice(itemIndex, 1);
+      const newIndex = itemIndex + direction;
 
-    // If dropped in the same place
-    if (
-      destination.droppableId === source.droppableId &&
-      destination.index === source.index
-    ) {
-      return;
-    }
+      if (newIndex >= 0 && newIndex < updatedItems.length + 1) {
+        updatedItems.splice(newIndex, 0, movedItem);
 
-    // Reordering categories within the same column
-    if (source.droppableId === destination.droppableId) {
-      const columnType = source.droppableId; // 'hobbies' or 'wishlist'
-      const items = columnType === 'hobbies' ? Array.from(hobbies) : Array.from(wishlist);
-      const [reorderedItem] = items.splice(source.index, 1);
-      items.splice(destination.index, 0, reorderedItem);
-
-      if (columnType === 'hobbies') {
-        setHobbies(items);
-      } else {
-        setWishlist(items);
-      }
-
-      // Update order in Firestore
-      const batch = writeBatch(db);
-      items.forEach((item, index) => {
-        const categoryRef = doc(db, columnType, item.id);
-        batch.update(categoryRef, { order: index });
-      });
-      await batch.commit();
-    } else { // Moving item within a category
-      const sourceColumnType = source.droppableId.split('-')[0]; // e.g., 'hobbies'
-      const sourceCategoryId = source.droppableId.split('-')[1];
-
-      const destinationColumnType = destination.droppableId.split('-')[0];
-      const destinationCategoryId = destination.droppableId.split('-')[1];
-
-      // Ensure it's an item reorder within a category
-      if (sourceColumnType === destinationColumnType && sourceCategoryId === destinationCategoryId) {
-        const currentCategories = sourceColumnType === 'hobbies' ? Array.from(hobbies) : Array.from(wishlist);
-        const categoryToUpdate = currentCategories.find(cat => cat.id === sourceCategoryId);
-
-        if (categoryToUpdate) {
-          const updatedItems = Array.from(categoryToUpdate.items || []);
-          const [reorderedItem] = updatedItems.splice(source.index, 1);
-          updatedItems.splice(destination.index, 0, reorderedItem);
-
-          // Update local state
-          if (sourceColumnType === 'hobbies') {
-            setHobbies(hobbies.map(cat => (cat.id === sourceCategoryId ? { ...cat, items: updatedItems } : cat)));
-          } else {
-            setWishlist(wishlist.map(cat => (cat.id === sourceCategoryId ? { ...cat, items: updatedItems } : cat)));
-          }
-
-          // Update Firestore
-          const categoryRef = doc(db, sourceColumnType, sourceCategoryId);
-          await updateDoc(categoryRef, { items: updatedItems });
+        // Update local state
+        if (type === 'interests') {
+          setInterests(interests.map(cat => (cat.id === categoryId ? { ...cat, items: updatedItems } : cat)));
+        } else {
+          setWishlist(wishlist.map(cat => (cat.id === categoryId ? { ...cat, items: updatedItems } : cat)));
         }
+
+        // Update Firestore
+        const categoryRef = doc(db, type, categoryId);
+        await updateDoc(categoryRef, { items: updatedItems });
       }
     }
   };
 
+  const handleMoveItemUp = (categoryId, itemIndex, type) => {
+    handleMoveItem(categoryId, itemIndex, -1, type);
+  };
+
+  const handleMoveItemDown = (categoryId, itemIndex, type) => {
+    handleMoveItem(categoryId, itemIndex, 1, type);
+  };
+
   return (
-    <DragDropContext onDragEnd={onDragEnd}>
-      <div style={mainContentStyle}>
-        <div style={tabMenuStyle}>
-          <button
-            style={{ ...tabButtonStyle, ...(activeTab === 'edit' ? activeTabButtonStyle : {}) }}
-            onClick={() => setActiveTab('edit')}
-          >
-            Edit Lists
-          </button>
-          <button
-            style={{ ...tabButtonStyle, ...(activeTab === 'view' ? activeTabButtonStyle : {}) }}
-            onClick={() => setActiveTab('view')}
-          >
-            View Lists
-          </button>
+    <div style={mainContentStyle}>
+      <div style={tabMenuStyle}>
+        <button
+          style={{ ...tabButtonStyle, ...(activeTab === 'edit' ? activeTabButtonStyle : {}) }}
+          onClick={() => setActiveTab('edit')}
+        >
+          Edit Lists
+        </button>
+        <button
+          style={{ ...tabButtonStyle, ...(activeTab === 'view' ? activeTabButtonStyle : {}) }}
+          onClick={() => setActiveTab('view')}
+        >
+          View Lists
+        </button>
+      </div>
+
+      <div style={columnsContainerStyle}>
+        {/* My Interests Column */}
+        <div
+          style={columnStyle}
+        >
+          <h2 style={columnTitleStyle}>My Interests</h2>
+          {interests.length === 0 ? (
+            <EmptyState message="No categories yet. Add one to get started!" />
+          ) : (
+            interests.map((category, index) => (
+              <CategoryCard
+                key={category.id}
+                category={category}
+                listType="interests"
+                onUpdateCategory={(id, updatedFields) => handleUpdateCategory(id, updatedFields, 'interests')}
+                onDeleteCategory={(id) => handleDeleteCategory(id, 'interests')}
+                onAddItemToCategory={(categoryId, item) => handleAddItemToCategory(categoryId, item, 'interests')}
+                onUpdateItem={(categoryId, itemId, newItemName) => handleUpdateItem(categoryId, itemId, newItemName, 'interests')}
+                onDeleteItem={(categoryId, itemId) => handleDeleteItem(categoryId, itemId, 'interests')}
+                onMoveItemUp={(categoryId, itemIndex) => handleMoveItemUp(categoryId, itemIndex, 'interests')}
+                onMoveItemDown={(categoryId, itemIndex) => handleMoveItemDown(categoryId, itemIndex, 'interests')}
+              />
+            ))
+          )}
+          <button style={addCategoryButtonStyle} onClick={() => handleAddCategory('interests')}>+ Add Category</button>
         </div>
 
-        <div style={columnsContainerStyle}>
-          {/* My Hobbies Column */}
-          <Droppable droppableId="hobbies">
-            {(provided) => (
-              <div
-                {...provided.droppableProps}
-                ref={provided.innerRef}
-                style={columnStyle}
-              >
-                <h2 style={columnTitleStyle}>My Hobbies</h2>
-                {hobbies.length === 0 ? (
-                  <EmptyState message="No categories yet. Add one to get started!" />
-                ) : (
-                  hobbies.map((category, index) => (
-                    <Draggable key={category.id} draggableId={category.id} index={index}>
-                      {(provided) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                        >
-                          <CategoryCard
-                            category={category}
-                            listType="hobbies"
-                            onUpdateCategory={(id, updatedFields) => handleUpdateCategory(id, updatedFields, 'hobbies')}
-                            onDeleteCategory={(id) => handleDeleteCategory(id, 'hobbies')}
-                            onAddItemToCategory={(categoryId, item) => handleAddItemToCategory(categoryId, item, 'hobbies')}
-                            onUpdateItem={(categoryId, itemId, newItemName) => handleUpdateItem(categoryId, itemId, newItemName, 'hobbies')}
-                            onDeleteItem={(categoryId, itemId) => handleDeleteItem(categoryId, itemId, 'hobbies')}
-                          />
-                        </div>
-                      )}
-                    </Draggable>
-                  ))
-                )}
-                {provided.placeholder}
-                <button style={addCategoryButtonStyle} onClick={() => handleAddCategory('hobbies')}>+ Add Category</button>
-              </div>
-            )}
-          </Droppable>
-
-          {/* My Wishlist Column */}
-          <Droppable droppableId="wishlist">
-            {(provided) => (
-              <div
-                {...provided.droppableProps}
-                ref={provided.innerRef}
-                style={columnStyle}
-              >
-                <h2 style={columnTitleStyle}>My Wishlist</h2>
-                {wishlist.length === 0 ? (
-                  <EmptyState message="No categories yet. Add one to get started!" />
-                ) : (
-                  wishlist.map((category, index) => (
-                    <Draggable key={category.id} draggableId={category.id} index={index}>
-                      {(provided) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                        >
-                          <CategoryCard
-                            category={category}
-                            listType="wishlist"
-                            onUpdateCategory={(id, updatedFields) => handleUpdateCategory(id, updatedFields, 'wishlist')}
-                            onDeleteCategory={(id) => handleDeleteCategory(id, 'wishlist')}
-                            onAddItemToCategory={(categoryId, item) => handleAddItemToCategory(categoryId, item, 'wishlist')}
-                            onUpdateItem={(categoryId, itemId, newItemName) => handleUpdateItem(categoryId, itemId, newItemName, 'wishlist')}
-                            onDeleteItem={(categoryId, itemId) => handleDeleteItem(categoryId, itemId, 'wishlist')}
-                          />
-                        </div>
-                      )}
-                    </Draggable>
-                  ))
-                )}
-                {provided.placeholder}
-                <button style={addCategoryButtonStyle} onClick={() => handleAddCategory('wishlist')}>+ Add Category</button>
-              </div>
-            )}
-          </Droppable>
+        {/* My Wishlist Column */}
+        <div
+          style={columnStyle}
+        >
+          <h2 style={columnTitleStyle}>My Wishlist</h2>
+          {wishlist.length === 0 ? (
+            <EmptyState message="No categories yet. Add one to get started!" />
+          ) : (
+            wishlist.map((category, index) => (
+              <CategoryCard
+                key={category.id}
+                category={category}
+                listType="wishlist"
+                onUpdateCategory={(id, updatedFields) => handleUpdateCategory(id, updatedFields, 'wishlist')}
+                onDeleteCategory={(id) => handleDeleteCategory(id, 'wishlist')}
+                onAddItemToCategory={(categoryId, item) => handleAddItemToCategory(categoryId, item, 'wishlist')}
+                onUpdateItem={(categoryId, itemId, newItemName) => handleUpdateItem(categoryId, itemId, newItemName, 'wishlist')}
+                onDeleteItem={(categoryId, itemId) => handleDeleteItem(categoryId, itemId, 'wishlist')}
+                onMoveItemUp={(categoryId, itemIndex) => handleMoveItemUp(categoryId, itemIndex, 'wishlist')}
+                onMoveItemDown={(categoryId, itemIndex) => handleMoveItemDown(categoryId, itemIndex, 'wishlist')}
+              />
+            ))
+          )}
+          <button style={addCategoryButtonStyle} onClick={() => handleAddCategory('wishlist')}>+ Add Category</button>
         </div>
       </div>
-    </DragDropContext>
+    </div>
   );
 }
 

@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { Droppable, Draggable } from '@hello-pangea/dnd';
 import ItemRow from './ItemRow';
 
-function CategoryCard({ category, onUpdateCategory, onDeleteCategory, onAddItemToCategory, onUpdateItem, onDeleteItem, listType }) {
+function CategoryCard({ category, onUpdateCategory, onDeleteCategory, onAddItemToCategory, onUpdateItem, onDeleteItem, onMoveItemUp, onMoveItemDown, listType }) {
   const [isEditingName, setIsEditingName] = useState(false);
   const [categoryName, setCategoryName] = useState(category.name);
 
@@ -18,7 +17,7 @@ function CategoryCard({ category, onUpdateCategory, onDeleteCategory, onAddItemT
   };
 
   const handleAddItem = () => {
-    const newItem = { id: Date.now().toString(), name: 'New Item' };
+    const newItem = { id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, name: 'New Item' };
     onAddItemToCategory(category.id, newItem);
   };
 
@@ -40,26 +39,21 @@ function CategoryCard({ category, onUpdateCategory, onDeleteCategory, onAddItemT
         <button style={deleteButtonStyle} onClick={() => onDeleteCategory(category.id)}>🗑️</button>
       </div>
       <div style={cardBodyStyle}>
-        <Droppable droppableId={`${listType}-${category.id}`}>
-          {(provided) => (
-            <div
-              {...provided.droppableProps}
-              ref={provided.innerRef}
-            >
-              {category.items && category.items.map((item, index) => (
-                <ItemRow
-                  key={item.id}
-                  item={item}
-                  index={index}
-                  categoryId={category.id}
-                  onUpdateItem={onUpdateItem}
-                  onDeleteItem={onDeleteItem}
-                />
-              ))}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
+        {
+          category.items && category.items.map((item, index) => (
+            <ItemRow
+              key={item.id}
+              item={item}
+              index={index}
+              categoryId={category.id}
+              onUpdateItem={onUpdateItem}
+              onDeleteItem={onDeleteItem}
+              onMoveItemUp={onMoveItemUp}
+              onMoveItemDown={onMoveItemDown}
+              totalItems={category.items.length}
+            />
+          ))
+        }
       </div>
       <div style={cardFooterStyle}>
         <button style={addItemButtonStyle} onClick={handleAddItem}>+ Add Item</button>

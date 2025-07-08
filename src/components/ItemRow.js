@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Draggable } from '@hello-pangea/dnd';
 
-function ItemRow({ item, categoryId, onUpdateItem, onDeleteItem, index }) {
+function ItemRow({ item, categoryId, onUpdateItem, onDeleteItem, onMoveItemUp, onMoveItemDown, index, totalItems }) {
   const [isEditingName, setIsEditingName] = useState(false);
   const [itemName, setItemName] = useState(item.name);
 
@@ -17,31 +16,37 @@ function ItemRow({ item, categoryId, onUpdateItem, onDeleteItem, index }) {
   };
 
   return (
-    <Draggable draggableId={item.id} index={index}>
-      {(provided) => (
-        <div
-          ref={provided.innerRef}
-          {...provided.draggableProps}
-          {...provided.dragHandleProps}
-          style={{ ...itemRowStyle, ...provided.draggableProps.style }}
-        >
-          <span style={dragHandleStyle}>⠿⠿⠿</span>
-          {isEditingName ? (
-            <input
-              type="text"
-              value={itemName}
-              onChange={handleNameChange}
-              onBlur={handleNameBlur}
-              autoFocus
-              style={itemNameInputStyle}
-            />
-          ) : (
-            <span onClick={() => setIsEditingName(true)} style={itemNameInputStyle}>{itemName}</span>
-          )}
-          <button style={deleteButtonStyle} onClick={() => onDeleteItem(categoryId, item.id)}>🗑️</button>
-        </div>
+    <div style={itemRowStyle}>
+      {isEditingName ? (
+        <input
+          type="text"
+          value={itemName}
+          onChange={handleNameChange}
+          onBlur={handleNameBlur}
+          autoFocus
+          style={itemNameInputStyle}
+        />
+      ) : (
+        <span onClick={() => setIsEditingName(true)} style={itemNameInputStyle}>{itemName}</span>
       )}
-    </Draggable>
+      <div style={itemActionsStyle}>
+        <button
+          onClick={() => onMoveItemUp(categoryId, index)}
+          disabled={index === 0}
+          style={moveButtonStyle}
+        >
+          ⬆️
+        </button>
+        <button
+          onClick={() => onMoveItemDown(categoryId, index)}
+          disabled={index === totalItems - 1}
+          style={moveButtonStyle}
+        >
+          ⬇️
+        </button>
+        <button style={deleteButtonStyle} onClick={() => onDeleteItem(categoryId, item.id)}>🗑️</button>
+      </div>
+    </div>
   );
 }
 
@@ -71,6 +76,21 @@ const deleteButtonStyle = {
   color: '#E74C3C',
   fontSize: '18px',
   cursor: 'pointer',
+};
+
+const itemActionsStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '5px',
+};
+
+const moveButtonStyle = {
+  background: 'none',
+  border: '1px solid #ccc',
+  borderRadius: '4px',
+  padding: '4px 8px',
+  cursor: 'pointer',
+  fontSize: '12px',
 };
 
 export default ItemRow;
