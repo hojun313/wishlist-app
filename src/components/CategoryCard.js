@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Droppable } from '@hello-pangea/dnd';
 import ItemRow from './ItemRow';
 
-function CategoryCard({ category, onUpdateCategory, onDeleteCategory, onAddItemToCategory, onUpdateItem, onDeleteItem, listType }) {
+function CategoryCard({ category, onUpdateCategory, onDeleteCategory, onAddItemToCategory, onUpdateItem, onDeleteItem, listType, isReadOnly }) {
   const [isEditingName, setIsEditingName] = useState(false);
   const [categoryName, setCategoryName] = useState(category.name);
 
@@ -12,12 +12,13 @@ function CategoryCard({ category, onUpdateCategory, onDeleteCategory, onAddItemT
 
   const handleNameBlur = () => {
     setIsEditingName(false);
-    if (categoryName.trim() !== category.name) {
+    if (!isReadOnly && categoryName.trim() !== category.name) {
       onUpdateCategory(category.id, { name: categoryName.trim() });
     }
   };
 
   const handleAddItem = () => {
+    if (isReadOnly) return;
     const newItem = { id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, name: 'New Item' };
     onAddItemToCategory(category.id, newItem);
   };
@@ -25,7 +26,7 @@ function CategoryCard({ category, onUpdateCategory, onDeleteCategory, onAddItemT
   return (
     <div style={categoryCardStyle}>
       <div style={cardHeaderStyle}>
-        {isEditingName ? (
+        {isEditingName && !isReadOnly ? (
           <input
             type="text"
             value={categoryName}
@@ -35,11 +36,13 @@ function CategoryCard({ category, onUpdateCategory, onDeleteCategory, onAddItemT
             style={categoryNameInputStyle}
           />
         ) : (
-          <span onClick={() => setIsEditingName(true)} style={categoryNameInputStyle}>{categoryName}</span>
+          <span onClick={() => !isReadOnly && setIsEditingName(true)} style={{ ...categoryNameInputStyle, cursor: isReadOnly ? 'default' : 'pointer' }}>{categoryName}</span>
         )}
-        <button style={deleteButtonStyle} onClick={() => onDeleteCategory(category.id)}>🗑️</button>
+        {!isReadOnly && (
+          <button style={deleteButtonStyle} onClick={() => onDeleteCategory(category.id)}>🗑️</button>
+        )}
       </div>
-      <Droppable droppableId={`${listType}-${category.id}`} type="item">
+      <Droppable droppableId={`${listType}-${category.id}`} type="item" isDropDisabled={isReadOnly}>
         {(provided) => (
           <div {...provided.droppableProps} ref={provided.innerRef} style={cardBodyStyle}>
             {
@@ -51,6 +54,7 @@ function CategoryCard({ category, onUpdateCategory, onDeleteCategory, onAddItemT
                   categoryId={category.id}
                   onUpdateItem={onUpdateItem}
                   onDeleteItem={onDeleteItem}
+                  isReadOnly={isReadOnly}
                 />
               ))
             }
@@ -58,9 +62,9 @@ function CategoryCard({ category, onUpdateCategory, onDeleteCategory, onAddItemT
           </div>
         )}
       </Droppable>
-      <div style={cardFooterStyle}>
+      {!isReadOnly && (
         <button style={addItemButtonStyle} onClick={handleAddItem}>+ Add Item</button>
-      </div>
+      )}
     </div>
   );
 }

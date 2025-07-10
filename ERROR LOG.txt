@@ -1,0 +1,27 @@
+Header.js:54 
+ Uncaught (in promise) FirebaseError: Missing or insufficient permissions.
+Promise.then		
+uc	@	async_queue_impl.ts:185
+enqueue	@	async_queue_impl.ts:130
+enqueueAndForget	@	async_queue_impl.ts:94
+(anonymous)	@	persistent_stream.ts:593
+(anonymous)	@	persistent_stream.ts:537
+a_	@	stream_bridge.ts:102
+(anonymous)	@	webchannel_connection.ts:400
+(anonymous)	@	webchannel_connection.ts:301
+ab	@	webchannel_blob_es2018.js:25
+F	@	webchannel_blob_es2018.js:23
+(anonymous)	@	webchannel_blob_es2018.js:84
+Rb	@	webchannel_blob_es2018.js:39
+(anonymous)	@	webchannel_blob_es2018.js:33
+(anonymous)	@	webchannel_blob_es2018.js:30
+ab	@	webchannel_blob_es2018.js:25
+F	@	webchannel_blob_es2018.js:23
+Wc	@	webchannel_blob_es2018.js:62
+(anonymous)	@	webchannel_blob_es2018.js:61
+(anonymous)	@	webchannel_blob_es2018.js:61
+Lc	@	webchannel_blob_es2018.js:57
+(anonymous)	@	webchannel_blob_es2018.js:55
+Promise.then		
+Nc	@	webchannel_blob_es2018.js:55
+(anonymous)	@	webchannel_blob_es2018.js:55

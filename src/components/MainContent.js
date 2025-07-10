@@ -5,40 +5,44 @@ import { DragDropContext } from '@hello-pangea/dnd';
 import CategoryCard from './CategoryCard';
 import EmptyState from './EmptyState';
 
-function MainContent({ currentUser }) {
+function MainContent({ currentUser, viewingUserId }) {
   const [interests, setInterests] = useState([]);
   const [wishlist, setWishlist] = useState([]);
 
+  const isReadOnly = !currentUser || viewingUserId !== currentUser.uid;
+
   useEffect(() => {
-    if (!currentUser) {
+    if (!viewingUserId) {
       setInterests([]);
       setWishlist([]);
       return;
     }
 
     const fetchCategories = async () => {
-      const interestsSnapshot = await getDocs(collection(db, "users", currentUser.uid, "interests"));
+      const interestsSnapshot = await getDocs(collection(db, "users", viewingUserId, "interests"));
       const interestsList = interestsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setInterests(interestsList);
 
-      const wishlistSnapshot = await getDocs(collection(db, "users", currentUser.uid, "wishlist"));
+      const wishlistSnapshot = await getDocs(collection(db, "users", viewingUserId, "wishlist"));
       const wishlistList = wishlistSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setWishlist(wishlistList);
     };
 
-    // Create user document if it doesn't exist
-    const userDocRef = doc(db, "users", currentUser.uid);
-    getDocs(collection(db, "users", currentUser.uid, "interests")).then(snapshot => {
-      if (snapshot.empty) {
-        setDoc(userDocRef, { email: currentUser.email, displayName: currentUser.displayName }, { merge: true });
-      }
-    });
+    // Create user document if it doesn't exist when viewing own list for the first time
+    if (currentUser && viewingUserId === currentUser.uid) {
+      const userDocRef = doc(db, "users", currentUser.uid);
+      getDocs(collection(db, "users", currentUser.uid, "interests")).then(snapshot => {
+        if (snapshot.empty) {
+          setDoc(userDocRef, { email: currentUser.email, displayName: currentUser.displayName }, { merge: true });
+        }
+      });
+    }
 
     fetchCategories();
-  }, [currentUser]);
+  }, [viewingUserId, currentUser]);
 
   const handleDragEnd = async (result) => {
-    if (!currentUser) return;
+    if (isReadOnly) return;
     const { source, destination } = result;
     if (!destination) return;
 
@@ -67,7 +71,7 @@ function MainContent({ currentUser }) {
       );
       setSourceList(newList);
 
-      const categoryRef = doc(db, "users", currentUser.uid, sourceType, sourceCategoryId);
+      const categoryRef = doc(db, "users", viewingUserId, sourceType, sourceCategoryId);
       await updateDoc(categoryRef, { items: sourceItems });
     } else {
       const destinationItems = Array.from(destinationCategory.items);
@@ -91,19 +95,19 @@ function MainContent({ currentUser }) {
         setDestinationList(newDestinationList);
       }
 
-      const sourceCategoryRef = doc(db, "users", currentUser.uid, sourceType, sourceCategoryId);
+      const sourceCategoryRef = doc(db, "users", viewingUserId, sourceType, sourceCategoryId);
       await updateDoc(sourceCategoryRef, { items: sourceItems });
 
-      const destinationCategoryRef = doc(db, "users", currentUser.uid, destinationType, destinationCategoryId);
+      const destinationCategoryRef = doc(db, "users", viewingUserId, destinationType, destinationCategoryId);
       await updateDoc(destinationCategoryRef, { items: destinationItems });
     }
   };
 
   const handleAddCategory = async (type) => {
-    if (!currentUser) return;
+    if (isReadOnly) return;
     const newCategory = { name: `New Category ${type === 'interests' ? interests.length + 1 : wishlist.length + 1}`, items: [], order: type === 'interests' ? interests.length : wishlist.length };
     try {
-      const collectionRef = collection(db, "users", currentUser.uid, type);
+      const collectionRef = collection(db, "users", viewingUserId, type);
       const docRef = await addDoc(collectionRef, newCategory);
       if (type === 'interests') {
         setInterests([...interests, { id: docRef.id, ...newCategory }]);
@@ -116,9 +120,9 @@ function MainContent({ currentUser }) {
   };
 
   const handleUpdateCategory = async (id, updatedFields, type) => {
-    if (!currentUser) return;
+    if (isReadOnly) return;
     try {
-      const categoryRef = doc(db, "users", currentUser.uid, type, id);
+      const categoryRef = doc(db, "users", viewingUserId, type, id);
       await updateDoc(categoryRef, updatedFields);
       if (type === 'interests') {
         setInterests(interests.map(cat => (cat.id === id ? { ...cat, ...updatedFields } : cat)));
@@ -131,10 +135,10 @@ function MainContent({ currentUser }) {
   };
 
   const handleDeleteCategory = async (id, type) => {
-    if (!currentUser) return;
+    if (isReadOnly) return;
     if (window.confirm("Are you sure you want to delete this category?")) {
       try {
-        await deleteDoc(doc(db, "users", currentUser.uid, type, id));
+        await deleteDoc(doc(db, "users", viewingUserId, type, id));
         if (type === 'interests') {
           setInterests(interests.filter(cat => cat.id !== id));
         } else {
@@ -147,9 +151,9 @@ function MainContent({ currentUser }) {
   };
 
   const handleAddItemToCategory = async (categoryId, item, type) => {
-    if (!currentUser) return;
+    if (isReadOnly) return;
     try {
-      const categoryRef = doc(db, "users", currentUser.uid, type, categoryId);
+      const categoryRef = doc(db, "users", viewingUserId, type, categoryId);
       const currentCategory = (type === 'interests' ? interests : wishlist).find(cat => cat.id === categoryId);
       const updatedItems = [...(currentCategory.items || []), item];
       await updateDoc(categoryRef, { items: updatedItems });
@@ -165,9 +169,9 @@ function MainContent({ currentUser }) {
   };
 
   const handleUpdateItem = async (categoryId, itemId, newItemName, type) => {
-    if (!currentUser) return;
+    if (isReadOnly) return;
     try {
-      const categoryRef = doc(db, "users", currentUser.uid, type, categoryId);
+      const categoryRef = doc(db, "users", viewingUserId, type, categoryId);
       const currentCategory = (type === 'interests' ? interests : wishlist).find(cat => cat.id === categoryId);
       const updatedItems = (currentCategory.items || []).map(item => 
         item.id === itemId ? { ...item, name: newItemName } : item
@@ -185,10 +189,10 @@ function MainContent({ currentUser }) {
   };
 
   const handleDeleteItem = async (categoryId, itemId, type) => {
-    if (!currentUser) return;
+    if (isReadOnly) return;
     if (window.confirm("Are you sure you want to delete this item?")) {
       try {
-        const categoryRef = doc(db, "users", currentUser.uid, type, categoryId);
+        const categoryRef = doc(db, "users", viewingUserId, type, categoryId);
         const currentCategory = (type === 'interests' ? interests : wishlist).find(cat => cat.id === categoryId);
         const updatedItems = (currentCategory.items || []).filter(item => item.id !== itemId);
         await updateDoc(categoryRef, { items: updatedItems });
@@ -204,10 +208,10 @@ function MainContent({ currentUser }) {
     }
   };
 
-  if (!currentUser) {
+  if (!viewingUserId) {
     return (
       <div style={mainContentStyle}>
-        <EmptyState message="Please sign in to create and manage your wishlists!" />
+        <EmptyState message="Please sign in or enter a share code to view a wishlist!" />
       </div>
     );
   }
@@ -232,10 +236,13 @@ function MainContent({ currentUser }) {
                   onAddItemToCategory={(categoryId, item) => handleAddItemToCategory(categoryId, item, 'interests')}
                   onUpdateItem={(categoryId, itemId, newItemName) => handleUpdateItem(categoryId, itemId, newItemName, 'interests')}
                   onDeleteItem={(categoryId, itemId) => handleDeleteItem(categoryId, itemId, 'interests')}
+                  isReadOnly={isReadOnly}
                 />
               ))
             )}
-            <button style={addCategoryButtonStyle} onClick={() => handleAddCategory('interests')}>+ Add Category</button>
+            {!isReadOnly && (
+              <button style={addCategoryButtonStyle} onClick={() => handleAddCategory('interests')}>+ Add Category</button>
+            )}
           </div>
 
           {/* My Wishlist Column */}
@@ -254,16 +261,20 @@ function MainContent({ currentUser }) {
                   onAddItemToCategory={(categoryId, item) => handleAddItemToCategory(categoryId, item, 'wishlist')}
                   onUpdateItem={(categoryId, itemId, newItemName) => handleUpdateItem(categoryId, itemId, newItemName, 'wishlist')}
                   onDeleteItem={(categoryId, itemId) => handleDeleteItem(categoryId, itemId, 'wishlist')}
+                  isReadOnly={isReadOnly}
                 />
               ))
             )}
-            <button style={addCategoryButtonStyle} onClick={() => handleAddCategory('wishlist')}>+ Add Category</button>
+            {!isReadOnly && (
+              <button style={addCategoryButtonStyle} onClick={() => handleAddCategory('wishlist')}>+ Add Category</button>
+            )}
           </div>
         </div>
       </div>
     </DragDropContext>
   );
 }
+
 
 
 

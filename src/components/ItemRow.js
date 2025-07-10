@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 
-function ItemRow({ item, categoryId, onUpdateItem, onDeleteItem, index }) {
+function ItemRow({ item, categoryId, onUpdateItem, onDeleteItem, index, isReadOnly }) {
   const [isEditingName, setIsEditingName] = useState(false);
   const [itemName, setItemName] = useState(item.name);
 
@@ -11,22 +11,22 @@ function ItemRow({ item, categoryId, onUpdateItem, onDeleteItem, index }) {
 
   const handleNameBlur = () => {
     setIsEditingName(false);
-    if (itemName.trim() !== item.name) {
+    if (!isReadOnly && itemName.trim() !== item.name) {
       onUpdateItem(categoryId, item.id, itemName.trim());
     }
   };
 
   return (
-    <Draggable draggableId={item.id} index={index}>
+    <Draggable draggableId={item.id} index={index} isDragDisabled={isReadOnly}>
       {(provided) => (
         <div
           ref={provided.innerRef}
           {...provided.draggableProps}
-          {...provided.dragHandleProps}
+          {...(!isReadOnly && provided.dragHandleProps)}
           style={{ ...itemRowStyle, ...provided.draggableProps.style }}
         >
-          <div style={dragHandleStyle}>&#x2630;</div>
-          {isEditingName ? (
+          {!isReadOnly && <div style={dragHandleStyle}>&#x2630;</div>}
+          {isEditingName && !isReadOnly ? (
             <input
               type="text"
               value={itemName}
@@ -36,10 +36,12 @@ function ItemRow({ item, categoryId, onUpdateItem, onDeleteItem, index }) {
               style={itemNameInputStyle}
             />
           ) : (
-            <span onClick={() => setIsEditingName(true)} style={itemNameInputStyle}>{itemName}</span>
+            <span onClick={() => !isReadOnly && setIsEditingName(true)} style={{ ...itemNameInputStyle, cursor: isReadOnly ? 'default' : 'pointer' }}>{itemName}</span>
           )}
           <div style={itemActionsStyle}>
-            <button style={deleteButtonStyle} onClick={() => onDeleteItem(categoryId, item.id)}>🗑️</button>
+            {!isReadOnly && (
+              <button style={deleteButtonStyle} onClick={() => onDeleteItem(categoryId, item.id)}>🗑️</button>
+            )}
           </div>
         </div>
       )}
