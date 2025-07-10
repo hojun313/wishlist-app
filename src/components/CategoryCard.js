@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
+import { Droppable } from '@hello-pangea/dnd';
 import ItemRow from './ItemRow';
 
-function CategoryCard({ category, onUpdateCategory, onDeleteCategory, onAddItemToCategory, onUpdateItem, onDeleteItem, onMoveItemUp, onMoveItemDown, listType }) {
+function CategoryCard({ category, onUpdateCategory, onDeleteCategory, onAddItemToCategory, onUpdateItem, onDeleteItem, listType }) {
   const [isEditingName, setIsEditingName] = useState(false);
   const [categoryName, setCategoryName] = useState(category.name);
 
@@ -38,23 +39,25 @@ function CategoryCard({ category, onUpdateCategory, onDeleteCategory, onAddItemT
         )}
         <button style={deleteButtonStyle} onClick={() => onDeleteCategory(category.id)}>🗑️</button>
       </div>
-      <div style={cardBodyStyle}>
-        {
-          category.items && category.items.map((item, index) => (
-            <ItemRow
-              key={item.id}
-              item={item}
-              index={index}
-              categoryId={category.id}
-              onUpdateItem={onUpdateItem}
-              onDeleteItem={onDeleteItem}
-              onMoveItemUp={onMoveItemUp}
-              onMoveItemDown={onMoveItemDown}
-              totalItems={category.items.length}
-            />
-          ))
-        }
-      </div>
+      <Droppable droppableId={`${listType}-${category.id}`} type="item">
+        {(provided) => (
+          <div {...provided.droppableProps} ref={provided.innerRef} style={cardBodyStyle}>
+            {
+              category.items && category.items.map((item, index) => (
+                <ItemRow
+                  key={item.id}
+                  item={item}
+                  index={index}
+                  categoryId={category.id}
+                  onUpdateItem={onUpdateItem}
+                  onDeleteItem={onDeleteItem}
+                />
+              ))
+            }
+            {provided.placeholder}
+          </div>
+        )}
+      </Droppable>
       <div style={cardFooterStyle}>
         <button style={addItemButtonStyle} onClick={handleAddItem}>+ Add Item</button>
       </div>

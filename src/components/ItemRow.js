@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { Draggable } from '@hello-pangea/dnd';
 
-function ItemRow({ item, categoryId, onUpdateItem, onDeleteItem, onMoveItemUp, onMoveItemDown, index, totalItems }) {
+function ItemRow({ item, categoryId, onUpdateItem, onDeleteItem, index }) {
   const [isEditingName, setIsEditingName] = useState(false);
   const [itemName, setItemName] = useState(item.name);
 
@@ -16,37 +17,33 @@ function ItemRow({ item, categoryId, onUpdateItem, onDeleteItem, onMoveItemUp, o
   };
 
   return (
-    <div style={itemRowStyle}>
-      {isEditingName ? (
-        <input
-          type="text"
-          value={itemName}
-          onChange={handleNameChange}
-          onBlur={handleNameBlur}
-          autoFocus
-          style={itemNameInputStyle}
-        />
-      ) : (
-        <span onClick={() => setIsEditingName(true)} style={itemNameInputStyle}>{itemName}</span>
+    <Draggable draggableId={item.id} index={index}>
+      {(provided) => (
+        <div
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          {...provided.dragHandleProps}
+          style={{ ...itemRowStyle, ...provided.draggableProps.style }}
+        >
+          <div style={dragHandleStyle}>&#x2630;</div>
+          {isEditingName ? (
+            <input
+              type="text"
+              value={itemName}
+              onChange={handleNameChange}
+              onBlur={handleNameBlur}
+              autoFocus
+              style={itemNameInputStyle}
+            />
+          ) : (
+            <span onClick={() => setIsEditingName(true)} style={itemNameInputStyle}>{itemName}</span>
+          )}
+          <div style={itemActionsStyle}>
+            <button style={deleteButtonStyle} onClick={() => onDeleteItem(categoryId, item.id)}>🗑️</button>
+          </div>
+        </div>
       )}
-      <div style={itemActionsStyle}>
-        <button
-          onClick={() => onMoveItemUp(categoryId, index)}
-          disabled={index === 0}
-          style={moveButtonStyle}
-        >
-          ⬆️
-        </button>
-        <button
-          onClick={() => onMoveItemDown(categoryId, index)}
-          disabled={index === totalItems - 1}
-          style={moveButtonStyle}
-        >
-          ⬇️
-        </button>
-        <button style={deleteButtonStyle} onClick={() => onDeleteItem(categoryId, item.id)}>🗑️</button>
-      </div>
-    </div>
+    </Draggable>
   );
 }
 

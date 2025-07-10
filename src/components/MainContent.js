@@ -1,28 +1,92 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { DragDropContext } from '@hello-pangea/dnd';
 import CategoryCard from './CategoryCard';
 import EmptyState from './EmptyState';
 
 function MainContent() {
-  const [activeTab, setActiveTab] = useState('edit'); // 'edit' or 'view'
   const [interests, setInterests] = useState([]);
   const [wishlist, setWishlist] = useState([]);
 
   useEffect(() => {
     const fetchCategories = async () => {
-      // Fetch Hobbies
       const interestsSnapshot = await getDocs(collection(db, "interests"));
       const interestsList = interestsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setInterests(interestsList);
 
-      // Fetch Wishlist
       const wishlistSnapshot = await getDocs(collection(db, "wishlist"));
       const wishlistList = wishlistSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setWishlist(wishlistList);
     };
     fetchCategories();
   }, []);
+
+  const handleDragEnd = async (result) => {
+    const { source, destination, draggableId } = result;
+
+    if (!destination) {
+      return;
+    }
+
+    const sourceDroppableId = source.droppableId;
+    const destinationDroppableId = destination.droppableId;
+    const sourceType = sourceDroppableId.startsWith('interests-') ? 'interests' : 'wishlist';
+    const destinationType = destinationDroppableId.startsWith('interests-') ? 'interests' : 'wishlist';
+    const sourceCategoryId = sourceDroppableId.replace(`${sourceType}-`, '');
+    const destinationCategoryId = destinationDroppableId.replace(`${destinationType}-`, '');
+
+    const sourceList = sourceType === 'interests' ? interests : wishlist;
+    const destinationList = destinationType === 'interests' ? interests : wishlist;
+    const setSourceList = sourceType === 'interests' ? setInterests : setWishlist;
+    const setDestinationList = destinationType === 'interests' ? setInterests : setWishlist;
+
+    const sourceCategory = sourceList.find(cat => cat.id === sourceCategoryId);
+    const destinationCategory = destinationList.find(cat => cat.id === destinationCategoryId);
+
+    const sourceItems = Array.from(sourceCategory.items);
+    const [movedItem] = sourceItems.splice(source.index, 1);
+
+    if (sourceDroppableId === destinationDroppableId) {
+      // Moving within the same list
+      sourceItems.splice(destination.index, 0, movedItem);
+      const newList = sourceList.map(cat =>
+        cat.id === sourceCategoryId ? { ...cat, items: sourceItems } : cat
+      );
+      setSourceList(newList);
+
+      const categoryRef = doc(db, sourceType, sourceCategoryId);
+      await updateDoc(categoryRef, { items: sourceItems });
+    } else {
+      // Moving to a different list
+      const destinationItems = Array.from(destinationCategory.items);
+      destinationItems.splice(destination.index, 0, movedItem);
+
+      const newSourceList = sourceList.map(cat =>
+        cat.id === sourceCategoryId ? { ...cat, items: sourceItems } : cat
+      );
+      const newDestinationList = destinationList.map(cat =>
+        cat.id === destinationCategoryId ? { ...cat, items: destinationItems } : cat
+      );
+
+      if (sourceType === destinationType) {
+        const combinedList = newSourceList.map(cat => {
+          const found = newDestinationList.find(c => c.id === cat.id);
+          return found ? found : cat;
+        });
+        setSourceList(combinedList);
+      } else {
+        setSourceList(newSourceList);
+        setDestinationList(newDestinationList);
+      }
+
+      const sourceCategoryRef = doc(db, sourceType, sourceCategoryId);
+      await updateDoc(sourceCategoryRef, { items: sourceItems });
+
+      const destinationCategoryRef = doc(db, destinationType, destinationCategoryId);
+      await updateDoc(destinationCategoryRef, { items: destinationItems });
+    }
+  };
 
   const handleAddCategory = async (type) => {
     const newCategory = { name: `New Category ${type === 'interests' ? interests.length + 1 : wishlist.length + 1}`, items: [], order: type === 'interests' ? interests.length : wishlist.length };
@@ -123,139 +187,64 @@ function MainContent() {
     }
   };
 
-  const handleMoveItem = async (categoryId, itemIndex, direction, type) => {
-    const currentCategories = type === 'interests' ? Array.from(interests) : Array.from(wishlist);
-    const categoryToUpdate = currentCategories.find(cat => cat.id === categoryId);
-
-    if (categoryToUpdate) {
-      const updatedItems = Array.from(categoryToUpdate.items || []);
-      const [movedItem] = updatedItems.splice(itemIndex, 1);
-      const newIndex = itemIndex + direction;
-
-      if (newIndex >= 0 && newIndex < updatedItems.length + 1) {
-        updatedItems.splice(newIndex, 0, movedItem);
-
-        // Update local state
-        if (type === 'interests') {
-          setInterests(interests.map(cat => (cat.id === categoryId ? { ...cat, items: updatedItems } : cat)));
-        } else {
-          setWishlist(wishlist.map(cat => (cat.id === categoryId ? { ...cat, items: updatedItems } : cat)));
-        }
-
-        // Update Firestore
-        const categoryRef = doc(db, type, categoryId);
-        await updateDoc(categoryRef, { items: updatedItems });
-      }
-    }
-  };
-
-  const handleMoveItemUp = (categoryId, itemIndex, type) => {
-    handleMoveItem(categoryId, itemIndex, -1, type);
-  };
-
-  const handleMoveItemDown = (categoryId, itemIndex, type) => {
-    handleMoveItem(categoryId, itemIndex, 1, type);
-  };
-
   return (
-    <div style={mainContentStyle}>
-      <div style={tabMenuStyle}>
-        <button
-          style={{ ...tabButtonStyle, ...(activeTab === 'edit' ? activeTabButtonStyle : {}) }}
-          onClick={() => setActiveTab('edit')}
-        >
-          Edit Lists
-        </button>
-        <button
-          style={{ ...tabButtonStyle, ...(activeTab === 'view' ? activeTabButtonStyle : {}) }}
-          onClick={() => setActiveTab('view')}
-        >
-          View Lists
-        </button>
-      </div>
+    <DragDropContext onDragEnd={handleDragEnd}>
+      <div style={mainContentStyle}>
+        <div style={columnsContainerStyle}>
+          {/* My Interests Column */}
+          <div style={columnStyle}>
+            <h2 style={columnTitleStyle}>My Interests</h2>
+            {interests.length === 0 ? (
+              <EmptyState message="No categories yet. Add one to get started!" />
+            ) : (
+              interests.map((category) => (
+                <CategoryCard
+                  key={category.id}
+                  category={category}
+                  listType="interests"
+                  onUpdateCategory={(id, updatedFields) => handleUpdateCategory(id, updatedFields, 'interests')}
+                  onDeleteCategory={(id) => handleDeleteCategory(id, 'interests')}
+                  onAddItemToCategory={(categoryId, item) => handleAddItemToCategory(categoryId, item, 'interests')}
+                  onUpdateItem={(categoryId, itemId, newItemName) => handleUpdateItem(categoryId, itemId, newItemName, 'interests')}
+                  onDeleteItem={(categoryId, itemId) => handleDeleteItem(categoryId, itemId, 'interests')}
+                />
+              ))
+            )}
+            <button style={addCategoryButtonStyle} onClick={() => handleAddCategory('interests')}>+ Add Category</button>
+          </div>
 
-      <div style={columnsContainerStyle}>
-        {/* My Interests Column */}
-        <div
-          style={columnStyle}
-        >
-          <h2 style={columnTitleStyle}>My Interests</h2>
-          {interests.length === 0 ? (
-            <EmptyState message="No categories yet. Add one to get started!" />
-          ) : (
-            interests.map((category, index) => (
-              <CategoryCard
-                key={category.id}
-                category={category}
-                listType="interests"
-                onUpdateCategory={(id, updatedFields) => handleUpdateCategory(id, updatedFields, 'interests')}
-                onDeleteCategory={(id) => handleDeleteCategory(id, 'interests')}
-                onAddItemToCategory={(categoryId, item) => handleAddItemToCategory(categoryId, item, 'interests')}
-                onUpdateItem={(categoryId, itemId, newItemName) => handleUpdateItem(categoryId, itemId, newItemName, 'interests')}
-                onDeleteItem={(categoryId, itemId) => handleDeleteItem(categoryId, itemId, 'interests')}
-                onMoveItemUp={(categoryId, itemIndex) => handleMoveItemUp(categoryId, itemIndex, 'interests')}
-                onMoveItemDown={(categoryId, itemIndex) => handleMoveItemDown(categoryId, itemIndex, 'interests')}
-              />
-            ))
-          )}
-          <button style={addCategoryButtonStyle} onClick={() => handleAddCategory('interests')}>+ Add Category</button>
-        </div>
-
-        {/* My Wishlist Column */}
-        <div
-          style={columnStyle}
-        >
-          <h2 style={columnTitleStyle}>My Wishlist</h2>
-          {wishlist.length === 0 ? (
-            <EmptyState message="No categories yet. Add one to get started!" />
-          ) : (
-            wishlist.map((category, index) => (
-              <CategoryCard
-                key={category.id}
-                category={category}
-                listType="wishlist"
-                onUpdateCategory={(id, updatedFields) => handleUpdateCategory(id, updatedFields, 'wishlist')}
-                onDeleteCategory={(id) => handleDeleteCategory(id, 'wishlist')}
-                onAddItemToCategory={(categoryId, item) => handleAddItemToCategory(categoryId, item, 'wishlist')}
-                onUpdateItem={(categoryId, itemId, newItemName) => handleUpdateItem(categoryId, itemId, newItemName, 'wishlist')}
-                onDeleteItem={(categoryId, itemId) => handleDeleteItem(categoryId, itemId, 'wishlist')}
-                onMoveItemUp={(categoryId, itemIndex) => handleMoveItemUp(categoryId, itemIndex, 'wishlist')}
-                onMoveItemDown={(categoryId, itemIndex) => handleMoveItemDown(categoryId, itemIndex, 'wishlist')}
-              />
-            ))
-          )}
-          <button style={addCategoryButtonStyle} onClick={() => handleAddCategory('wishlist')}>+ Add Category</button>
+          {/* My Wishlist Column */}
+          <div style={columnStyle}>
+            <h2 style={columnTitleStyle}>My Wishlist</h2>
+            {wishlist.length === 0 ? (
+              <EmptyState message="No categories yet. Add one to get started!" />
+            ) : (
+              wishlist.map((category) => (
+                <CategoryCard
+                  key={category.id}
+                  category={category}
+                  listType="wishlist"
+                  onUpdateCategory={(id, updatedFields) => handleUpdateCategory(id, updatedFields, 'wishlist')}
+                  onDeleteCategory={(id) => handleDeleteCategory(id, 'wishlist')}
+                  onAddItemToCategory={(categoryId, item) => handleAddItemToCategory(categoryId, item, 'wishlist')}
+                  onUpdateItem={(categoryId, itemId, newItemName) => handleUpdateItem(categoryId, itemId, newItemName, 'wishlist')}
+                  onDeleteItem={(categoryId, itemId) => handleDeleteItem(categoryId, itemId, 'wishlist')}
+                />
+              ))
+            )}
+            <button style={addCategoryButtonStyle} onClick={() => handleAddCategory('wishlist')}>+ Add Category</button>
+          </div>
         </div>
       </div>
-    </div>
+    </DragDropContext>
   );
 }
+
 
 const mainContentStyle = {
   padding: '20px',
   backgroundColor: '#F7F8FA',
   minHeight: 'calc(100vh - 80px)', // Adjust based on header height
-};
-
-const tabMenuStyle = {
-  display: 'flex',
-  marginBottom: '20px',
-};
-
-const tabButtonStyle = {
-  padding: '10px 20px',
-  border: '1px solid #ccc',
-  backgroundColor: '#fff',
-  cursor: 'pointer',
-  fontSize: '16px',
-  borderRadius: '5px',
-  marginRight: '10px',
-};
-
-const activeTabButtonStyle = {
-  backgroundColor: '#007bff',
-  color: 'white',
-  borderColor: '#007bff',
 };
 
 const columnsContainerStyle = {
