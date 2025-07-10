@@ -1,33 +1,46 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { DragDropContext } from '@hello-pangea/dnd';
 import CategoryCard from './CategoryCard';
 import EmptyState from './EmptyState';
 
-function MainContent() {
+function MainContent({ currentUser }) {
   const [interests, setInterests] = useState([]);
   const [wishlist, setWishlist] = useState([]);
 
   useEffect(() => {
+    if (!currentUser) {
+      setInterests([]);
+      setWishlist([]);
+      return;
+    }
+
     const fetchCategories = async () => {
-      const interestsSnapshot = await getDocs(collection(db, "interests"));
+      const interestsSnapshot = await getDocs(collection(db, "users", currentUser.uid, "interests"));
       const interestsList = interestsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setInterests(interestsList);
 
-      const wishlistSnapshot = await getDocs(collection(db, "wishlist"));
+      const wishlistSnapshot = await getDocs(collection(db, "users", currentUser.uid, "wishlist"));
       const wishlistList = wishlistSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setWishlist(wishlistList);
     };
+
+    // Create user document if it doesn't exist
+    const userDocRef = doc(db, "users", currentUser.uid);
+    getDocs(collection(db, "users", currentUser.uid, "interests")).then(snapshot => {
+      if (snapshot.empty) {
+        setDoc(userDocRef, { email: currentUser.email, displayName: currentUser.displayName }, { merge: true });
+      }
+    });
+
     fetchCategories();
-  }, []);
+  }, [currentUser]);
 
   const handleDragEnd = async (result) => {
-    const { source, destination, draggableId } = result;
-
-    if (!destination) {
-      return;
-    }
+    if (!currentUser) return;
+    const { source, destination } = result;
+    if (!destination) return;
 
     const sourceDroppableId = source.droppableId;
     const destinationDroppableId = destination.droppableId;
@@ -48,17 +61,15 @@ function MainContent() {
     const [movedItem] = sourceItems.splice(source.index, 1);
 
     if (sourceDroppableId === destinationDroppableId) {
-      // Moving within the same list
       sourceItems.splice(destination.index, 0, movedItem);
       const newList = sourceList.map(cat =>
         cat.id === sourceCategoryId ? { ...cat, items: sourceItems } : cat
       );
       setSourceList(newList);
 
-      const categoryRef = doc(db, sourceType, sourceCategoryId);
+      const categoryRef = doc(db, "users", currentUser.uid, sourceType, sourceCategoryId);
       await updateDoc(categoryRef, { items: sourceItems });
     } else {
-      // Moving to a different list
       const destinationItems = Array.from(destinationCategory.items);
       destinationItems.splice(destination.index, 0, movedItem);
 
@@ -80,18 +91,19 @@ function MainContent() {
         setDestinationList(newDestinationList);
       }
 
-      const sourceCategoryRef = doc(db, sourceType, sourceCategoryId);
+      const sourceCategoryRef = doc(db, "users", currentUser.uid, sourceType, sourceCategoryId);
       await updateDoc(sourceCategoryRef, { items: sourceItems });
 
-      const destinationCategoryRef = doc(db, destinationType, destinationCategoryId);
+      const destinationCategoryRef = doc(db, "users", currentUser.uid, destinationType, destinationCategoryId);
       await updateDoc(destinationCategoryRef, { items: destinationItems });
     }
   };
 
   const handleAddCategory = async (type) => {
+    if (!currentUser) return;
     const newCategory = { name: `New Category ${type === 'interests' ? interests.length + 1 : wishlist.length + 1}`, items: [], order: type === 'interests' ? interests.length : wishlist.length };
     try {
-      const collectionRef = collection(db, type);
+      const collectionRef = collection(db, "users", currentUser.uid, type);
       const docRef = await addDoc(collectionRef, newCategory);
       if (type === 'interests') {
         setInterests([...interests, { id: docRef.id, ...newCategory }]);
@@ -104,8 +116,9 @@ function MainContent() {
   };
 
   const handleUpdateCategory = async (id, updatedFields, type) => {
+    if (!currentUser) return;
     try {
-      const categoryRef = doc(db, type, id);
+      const categoryRef = doc(db, "users", currentUser.uid, type, id);
       await updateDoc(categoryRef, updatedFields);
       if (type === 'interests') {
         setInterests(interests.map(cat => (cat.id === id ? { ...cat, ...updatedFields } : cat)));
@@ -118,9 +131,10 @@ function MainContent() {
   };
 
   const handleDeleteCategory = async (id, type) => {
+    if (!currentUser) return;
     if (window.confirm("Are you sure you want to delete this category?")) {
       try {
-        await deleteDoc(doc(db, type, id));
+        await deleteDoc(doc(db, "users", currentUser.uid, type, id));
         if (type === 'interests') {
           setInterests(interests.filter(cat => cat.id !== id));
         } else {
@@ -133,8 +147,9 @@ function MainContent() {
   };
 
   const handleAddItemToCategory = async (categoryId, item, type) => {
+    if (!currentUser) return;
     try {
-      const categoryRef = doc(db, type, categoryId);
+      const categoryRef = doc(db, "users", currentUser.uid, type, categoryId);
       const currentCategory = (type === 'interests' ? interests : wishlist).find(cat => cat.id === categoryId);
       const updatedItems = [...(currentCategory.items || []), item];
       await updateDoc(categoryRef, { items: updatedItems });
@@ -150,8 +165,9 @@ function MainContent() {
   };
 
   const handleUpdateItem = async (categoryId, itemId, newItemName, type) => {
+    if (!currentUser) return;
     try {
-      const categoryRef = doc(db, type, categoryId);
+      const categoryRef = doc(db, "users", currentUser.uid, type, categoryId);
       const currentCategory = (type === 'interests' ? interests : wishlist).find(cat => cat.id === categoryId);
       const updatedItems = (currentCategory.items || []).map(item => 
         item.id === itemId ? { ...item, name: newItemName } : item
@@ -169,9 +185,10 @@ function MainContent() {
   };
 
   const handleDeleteItem = async (categoryId, itemId, type) => {
+    if (!currentUser) return;
     if (window.confirm("Are you sure you want to delete this item?")) {
       try {
-        const categoryRef = doc(db, type, categoryId);
+        const categoryRef = doc(db, "users", currentUser.uid, type, categoryId);
         const currentCategory = (type === 'interests' ? interests : wishlist).find(cat => cat.id === categoryId);
         const updatedItems = (currentCategory.items || []).filter(item => item.id !== itemId);
         await updateDoc(categoryRef, { items: updatedItems });
@@ -186,6 +203,14 @@ function MainContent() {
       }
     }
   };
+
+  if (!currentUser) {
+    return (
+      <div style={mainContentStyle}>
+        <EmptyState message="Please sign in to create and manage your wishlists!" />
+      </div>
+    );
+  }
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
@@ -239,6 +264,7 @@ function MainContent() {
     </DragDropContext>
   );
 }
+
 
 
 const mainContentStyle = {

@@ -1,13 +1,28 @@
 import React from 'react';
+import { auth, provider } from '../firebase';
+import { signInWithPopup, signOut } from 'firebase/auth';
 
-function Header() {
+function Header({ currentUser }) {
+  const handleSignIn = () => {
+    signInWithPopup(auth, provider).catch(error => console.error(error));
+  };
+
+  const handleSignOut = () => {
+    signOut(auth).catch(error => console.error(error));
+  };
+
   return (
     <header style={headerStyle}>
       <div style={logoStyle}>Wishlist Hub</div>
       <div style={buttonGroupStyle}>
-        <button style={createListButtonStyle}>+ Create New List</button>
-        <button style={authButtonStyle}>Sign In</button>
-        <button style={authButtonStyle}>Sign Up</button>
+        {currentUser ? (
+          <>
+            <span style={welcomeMessageStyle}>Welcome, {currentUser.displayName || 'User'}!</span>
+            <button onClick={handleSignOut} style={authButtonStyle}>Sign Out</button>
+          </>
+        ) : (
+          <button onClick={handleSignIn} style={authButtonStyle}>Sign In with Google</button>
+        )}
       </div>
     </header>
   );
@@ -30,17 +45,13 @@ const logoStyle = {
 
 const buttonGroupStyle = {
   display: 'flex',
-  gap: '10px',
+  alignItems: 'center',
+  gap: '15px',
 };
 
-const createListButtonStyle = {
-  padding: '10px 15px',
-  backgroundColor: '#FF7A50',
-  color: 'white',
-  border: 'none',
-  borderRadius: '8px',
-  cursor: 'pointer',
+const welcomeMessageStyle = {
   fontSize: '16px',
+  color: '#333',
 };
 
 const authButtonStyle = {
