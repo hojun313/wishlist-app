@@ -1,70 +1,93 @@
-# Getting Started with Create React App
+![스크린샷](wishlist-app.png)
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+# Wishlist App
 
-## Available Scripts
+A web application designed to help users manage their personal interests and wishlists. It provides features for organizing items into categories, and the ability to share and view wishlists with others.
 
-In the project directory, you can run:
+## Features
 
-### `npm start`
+*   **User Authentication:** Secure user login and registration powered by Google Sign-In (Firebase Authentication).
+*   **Personalized Lists:** Create and manage two distinct lists: "My Interests" and "My Wishlist".
+*   **Category Management:** Organize items into custom categories within both "Interests" and "Wishlist".
+*   **Item Management:** Add, update, and delete individual items within categories.
+*   **Drag-and-Drop Functionality:** Easily reorder items within categories using intuitive drag-and-drop.
+*   **Shared Wishlists:** View wishlists shared by other users (read-only access).
+*   **Data Persistence:** All user data, including categories and items, is securely stored and synchronized using Firebase Firestore.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Technologies Used
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+*   **React.js:** A JavaScript library for building user interfaces.
+*   **Firebase:** Google's development platform, utilized for:
+    *   **Authentication:** User authentication and management.
+    *   **Firestore:** NoSQL cloud database for storing application data.
+*   **@hello-pangea/dnd:** A powerful and flexible drag-and-drop library for React.
+*   **CSS:** For styling and responsive design.
 
-### `npm test`
+## Setup and Installation
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+To get this project up and running on your local machine, follow these steps:
 
-### `npm run build`
+### Prerequisites
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+*   **Node.js:** Make sure you have Node.js (which includes npm) installed. You can download it from [nodejs.org](https://nodejs.org/).
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### 1. Clone the Repository
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```bash
+git clone https://github.com/your-username/wishlist-app.git
+cd wishlist-app
+```
 
-### `npm run eject`
+### 2. Install Dependencies
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+```bash
+npm install
+```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### 3. Firebase Project Setup
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+This application relies on Firebase for authentication and data storage. You'll need to set up your own Firebase project:
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+1.  Go to the [Firebase Console](https://console.firebase.google.com/) and create a new project.
+2.  Enable **Firestore Database** and **Authentication** (with Google Sign-in provider enabled).
+3.  In your Firebase project settings, find your web app's configuration. It will look something like this:
 
-## Learn More
+    ```javascript
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_STORAGE_BUCKET",
+      messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+      appId: "YOUR_APP_ID",
+      measurementId: "YOUR_MEASUREMENT_ID"
+    };
+    ```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+4.  Create a `.env` file in the root of your project (the same directory as `package.json`) and add your Firebase configuration as environment variables:
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+    ```
+    REACT_APP_FIREBASE_API_KEY=YOUR_API_KEY
+    REACT_APP_FIREBASE_AUTH_DOMAIN=YOUR_AUTH_DOMAIN
+    REACT_APP_FIREBASE_PROJECT_ID=YOUR_PROJECT_ID
+    REACT_APP_FIREBASE_STORAGE_BUCKET=YOUR_STORAGE_BUCKET
+    REACT_APP_FIREBASE_MESSAGING_SENDER_ID=YOUR_MESSAGING_SENDER_ID
+    REACT_APP_FIREBASE_APP_ID=YOUR_APP_ID
+    REACT_APP_FIREBASE_MEASUREMENT_ID=YOUR_MEASUREMENT_ID
+    ```
 
-### Code Splitting
+    **Important:** Replace `YOUR_API_KEY`, `YOUR_AUTH_DOMAIN`, etc., with your actual Firebase project details. Do not commit your `.env` file to version control.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## Running the Application
 
-### Analyzing the Bundle Size
+Once you have completed the setup, you can run the application in development mode:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+```bash
+npm start
+```
 
-### Making a Progressive Web App
+This will open the application in your browser at `http://localhost:3000` (or another available port).
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+## Deployment
 
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+This project can be deployed to various static site hosting services like Netlify, Vercel, or GitHub Pages. For GitHub Pages, you might need to configure your `package.json` with a `homepage` field and use `gh-pages` package for deployment.
